@@ -88,8 +88,6 @@ public class AlbumDetailActivity extends Activity {
         mCurrentScene = mExpandedScene;
     }
     mTransitionManager.transitionTo(mCurrentScene);
-
-
     }
 
     private void setupTransition() {
