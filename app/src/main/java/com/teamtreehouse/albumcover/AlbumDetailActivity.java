@@ -1,7 +1,5 @@
 package com.teamtreehouse.albumcover;
 
-import android.animation.AnimatorSet;
-import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
@@ -11,12 +9,16 @@ import android.support.v7.graphics.Palette;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
 import android.transition.Scene;
+import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+
+import com.teamtreehouse.albumcover.transition.Fold;
+import com.teamtreehouse.albumcover.transition.Scale;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -37,105 +39,79 @@ public class AlbumDetailActivity extends Activity {
     private Scene mExpandedScene;
     private Scene mCollapsedScene;
     private Scene mCurrentScene;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_album_detail);
         ButterKnife.bind(this);
         populate();
-        setupTransition();
-        mCurrentScene = mExpandedScene;
-
+        setupTransitions();
     }
 
-    private void animate() {
+    private Transition createTransition() {
+        TransitionSet set = new TransitionSet();
+        set.setOrdering(TransitionSet.ORDERING_SEQUENTIAL);
 
-        ObjectAnimator oaFacX = ObjectAnimator.ofFloat(fab,"scaleX",0,1);
-        ObjectAnimator oaFacY = ObjectAnimator.ofFloat(fab,"scaleY",0,1);
-        AnimatorSet fabAnimatorScale = new AnimatorSet();
-        fabAnimatorScale.playTogether(oaFacX, oaFacY);
+        Transition tFab = new Scale();
+        tFab.setDuration(150);
+        tFab.addTarget(fab);
 
+        Transition tTitle = new Fold();
+        tTitle.setDuration(150);
+        tTitle.addTarget(titlePanel);
 
-        int titleStartValue=titlePanel.getTop();
-        int  titleEndValue= titlePanel.getBottom();
-       ObjectAnimator animatorTitle = ObjectAnimator.ofInt(titlePanel,"bottom",titleStartValue, titleEndValue);
+        Transition tTrack = new Fold();
+        tTrack.setDuration(150);
+        tTrack.addTarget(trackPanel);
 
-        int trackStartValue=trackPanel.getTop();
-        int trackEndValue= trackPanel.getBottom();
-        ObjectAnimator animatorTrack = ObjectAnimator.ofInt(trackPanel,"bottom", trackStartValue,trackEndValue);
+        set.addTransition(tTrack);
+        set.addTransition(tTitle);
+        set.addTransition(tFab);
 
-        titlePanel.setBottom(titleStartValue);
-        trackPanel.setBottom(titleStartValue);
-        fab.setScaleY(0);
-        fab.setScaleX(0);
-
-        AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playSequentially(fabAnimatorScale, animatorTitle, animatorTrack);
-        animatorSet.start();
+        return set;
     }
 
     @OnClick(R.id.album_art)
     public void onAlbumArtClick(View view) {
-        animate();
+        Transition transition = createTransition();
+        TransitionManager.beginDelayedTransition(detailContainer, transition);
+        fab.setVisibility(View.INVISIBLE);
+        titlePanel.setVisibility(View.INVISIBLE);
+        trackPanel.setVisibility(View.INVISIBLE);
     }
 
     @OnClick(R.id.track_panel)
-    public void onTrackPanleClick(View view){
-
-    if(mCurrentScene == mExpandedScene){
-        mCurrentScene = mCollapsedScene;
-    }else{
-        mCurrentScene = mExpandedScene;
+    public void onTrackPanelClicked(View view) {
+        if (mCurrentScene == mExpandedScene) {
+            mCurrentScene = mCollapsedScene;
+        } else {
+            mCurrentScene = mExpandedScene;
+        }
+        mTransitionManager.transitionTo(mCurrentScene);
     }
-    mTransitionManager.transitionTo(mCurrentScene);
-    }
 
-    private void setupTransition() {
+    private void setupTransitions() {
         mTransitionManager = new TransitionManager();
         ViewGroup transitionRoot = detailContainer;
-        //Collapse Scene
-        mCollapsedScene = Scene.getSceneForLayout(transitionRoot, R.layout.activity_album_detail, this);
-        mCollapsedScene.setEnterAction(new Runnable() {
-            @Override
-            public void run() {
-                ButterKnife.bind(AlbumDetailActivity.this);
-                populate();
-                mCurrentScene=mCollapsedScene;
-            }
-        });
 
-        TransitionSet collapseTransitionSet = new TransitionSet();
-        collapseTransitionSet.setOrdering(TransitionSet.ORDERING_SEQUENTIAL);
+        // Expanded scene
+        mExpandedScene = Scene.getSceneForLayout(transitionRoot,
+                R.layout.activity_album_detail_expanded, this);
 
-
-
-        Fade fadeOutLyrics = new Fade();
-        fadeOutLyrics.addTarget(R.id.lyrics);
-        fadeOutLyrics.setDuration(150);
-        collapseTransitionSet.addTransition(fadeOutLyrics);
-
-        ChangeBounds resetBounds  = new ChangeBounds();
-        resetBounds.setDuration(200);
-
-        collapseTransitionSet.addTransition(resetBounds);
-        //Expanded Scene
-        mExpandedScene = Scene.getSceneForLayout(transitionRoot, R.layout.activity_album_detail_expanded, this);
         mExpandedScene.setEnterAction(new Runnable() {
             @Override
             public void run() {
                 ButterKnife.bind(AlbumDetailActivity.this);
                 populate();
                 mCurrentScene = mExpandedScene;
-
             }
         });
 
         TransitionSet expandTransitionSet = new TransitionSet();
         expandTransitionSet.setOrdering(TransitionSet.ORDERING_SEQUENTIAL);
-
-        ChangeBounds changeBounds  = new ChangeBounds();
+        ChangeBounds changeBounds = new ChangeBounds();
         changeBounds.setDuration(200);
-
         expandTransitionSet.addTransition(changeBounds);
 
         Fade fadeLyrics = new Fade();
@@ -143,8 +119,34 @@ public class AlbumDetailActivity extends Activity {
         fadeLyrics.setDuration(150);
         expandTransitionSet.addTransition(fadeLyrics);
 
+        // Collapsed scene
+        mCollapsedScene = Scene.getSceneForLayout(transitionRoot,
+                R.layout.activity_album_detail, this);
+
+        mCollapsedScene.setEnterAction(new Runnable() {
+            @Override
+            public void run() {
+                ButterKnife.bind(AlbumDetailActivity.this);
+                populate();
+                mCurrentScene = mCollapsedScene;
+            }
+        });
+
+        TransitionSet collapseTransitionSet = new TransitionSet();
+        collapseTransitionSet.setOrdering(TransitionSet.ORDERING_SEQUENTIAL);
+
+        Fade fadeOutLyrics = new Fade();
+        fadeOutLyrics.addTarget(R.id.lyrics);
+        fadeOutLyrics.setDuration(150);
+        collapseTransitionSet.addTransition(fadeOutLyrics);
+
+        ChangeBounds resetBounds = new ChangeBounds();
+        resetBounds.setDuration(200);
+        collapseTransitionSet.addTransition(resetBounds);
+
         mTransitionManager.setTransition(mExpandedScene, mCollapsedScene, collapseTransitionSet);
         mTransitionManager.setTransition(mCollapsedScene, mExpandedScene, expandTransitionSet);
+        mCollapsedScene.enter();
     }
 
     private void populate() {

@@ -15,11 +15,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name="com.teamtreehouse.albumcover.AlbumDetailActivity"
-            android:theme="@style/AppTheme.Dark"
-            android:label="@string/title_activity_album_detail" >
-        </activity>
     </application>
 
 </manifest>
